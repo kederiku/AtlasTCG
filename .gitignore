@@ -1,0 +1,34 @@
+# Configuration locale : les exemples restent versionnables.
+.env
+.env.*
+!.env.example
+
+# Données de l’installation ; ne pas masquer les fixtures des tests.
+/data/
+
+# Environnements, distributions et caches Python.
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Dépendances et sorties frontend.
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+
+# Rapports de tests et de couverture.
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# Fichiers générés par le système d’exploitation.
+.DS_Store
+Thumbs.db

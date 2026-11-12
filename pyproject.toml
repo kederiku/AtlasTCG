@@ -1,0 +1,44 @@
+[project]
+name = "tcg-workspace"
+version = "0.1.0"
+description = "Development workspace for the TCG applications"
+requires-python = ">=3.14,<3.16"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/api", "apps/scraping", "packages/core", "packages/persistence"]
+
+[tool.uv.sources]
+tcg-api = { workspace = true }
+tcg-scraping = { workspace = true }
+
+[dependency-groups]
+test = ["pytest>=8.3"]
+api-test = [{ include-group = "test" }, "httpx>=0.28"]
+dev = [
+    { include-group = "api-test" },
+    "tcg-api",
+    "tcg-scraping",
+    "ruff>=0.11",
+    "pytest-bdd>=8",
+    "mypy>=1.15",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "packages/core/tests", "packages/persistence/tests", "apps/api/tests", "apps/scraping/tests"]
+addopts = "--import-mode=importlib"
+
+[tool.mypy]
+files = ["packages/core/src"]
+python_version = "3.14"
+strict = true

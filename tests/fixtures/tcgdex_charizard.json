@@ -1,0 +1,13 @@
+{
+  "id":"base1-4", "localId":"4", "name":"Dracaufeu", "category":"Pokémon",
+  "image":"https://assets.tcgdex.net/fr/base/base1/4", "illustrator":"Mitsuhiro Arita",
+  "set":{"id":"base1","name":"Set de Base","cardCount":{"official":102,"total":102}},
+  "hp":120, "types":["Feu"], "stage":"Niveau 2", "evolveFrom":"Reptincel", "rarity":"Rare",
+  "description":"Il peut fondre la roche de son souffle brûlant.",
+  "abilities":[{"type":"Pouvoir Pokémon","name":"Combustion d'Énergie","effect":"Transformez les Énergies attachées en Énergie {R}."}],
+  "attacks":[{"name":"Danseflamme","cost":["Feu","Feu","Feu","Feu"],"damage":"100+","effect":"Défaussez 2 cartes Énergie."}],
+  "retreat":3, "weaknesses":[{"type":"Eau","value":"×2"}],
+  "resistances":[{"type":"Combat","value":"-30"}], "dexId":[6],
+  "variants":{"holo":true,"normal":false}, "legal":{"standard":false,"expanded":false},
+  "unmapped_future_field":{"anything":"preserved"}
+}

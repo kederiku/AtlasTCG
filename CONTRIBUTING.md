@@ -149,6 +149,29 @@ Les paquets du workspace sont reconstruits explicitement afin qu’une ancienne 
 locale en cache ne masque pas les changements de sources ; le verrou reste appliqué.
 Les dépendances de test sont verrouillées et ne sont pas incluses dans les images.
 
+## Intégration continue
+
+Le workflow [Quality](.github/workflows/ci.yml) s’exécute sur les pushes, les pull
+requests et à la demande. Trois jobs indépendants appliquent les mêmes contrôles
+que sur l’hôte :
+
+- `check` installe les dépendances verrouillées avec `make install`, exécute
+  `make test` puis vérifie `alembic upgrade head` et `alembic check` sur une base
+  SQLite neuve dans le répertoire temporaire du runner.
+- `installations` exécute `make test-installations` pour les quatre paquets Python.
+- `docker` exécute `make docker-build` puis `make docker-test` ; ce dernier vérifie
+  PostgreSQL et les services réels dans un projet temporaire unique.
+
+Python suit `.python-version`, Node utilise la version 24 et uv est aligné sur la
+version du Dockerfile. Les caches uv des deux jobs sont distincts ; npm utilise
+le verrou frontend. Les jobs ont un délai maximal de 15 minutes (30 pour Docker).
+Une nouvelle exécution du même événement et de la même branche ou pull request
+annule la précédente. Le jeton GitHub dispose seulement de la lecture du dépôt.
+
+Ces contrôles ne nécessitent ni `.env` personnel ni secret de fournisseur. Le mot
+de passe fourni au build sert uniquement à l’interpolation Compose ; le test de
+pile crée ses propres identifiants et données temporaires.
+
 Pour installer une application seule depuis la racine, utiliser un environnement
 séparé plutôt que remplacer `.venv`. Conserver `--package` et `--no-dev` également
 à l’exécution : un `uv run` sans ces options peut réinstaller les dépendances de

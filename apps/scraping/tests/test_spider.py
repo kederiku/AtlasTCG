@@ -119,6 +119,75 @@ def test_existing_card_filter_scopes_identity_and_force(tmp_path):
     middleware.close()
 
 
+@pytest.mark.parametrize("explicit_ids", [False, True], ids=["discovery", "explicit-ids"])
+@pytest.mark.parametrize(
+    ("limit", "expected_downloads"),
+    [
+        ("2", []),
+        ("0", [("fr", "base1-3"), ("en", "base1-3")]),
+    ],
+    ids=["bounded-candidates", "unlimited-cli"],
+)
+def test_candidate_limit_precedes_existing_filter_without_backfilling(
+    tmp_path, explicit_ids, limit, expected_downloads
+):
+    from scrapy.crawler import Crawler
+    from scrapy.exceptions import IgnoreRequest
+    from scrapy.statscollectors import MemoryStatsCollector
+    from tcg_scraping.middleware import SkipExistingCardsMiddleware
+
+    repository = Repository(f"sqlite:///{tmp_path / 'candidates.db'}")
+    metadata.create_all(repository.engine)
+    for language in ("fr", "en"):
+        for number in ("1", "2"):
+            repository.save(
+                observation(language) | {"source_id": f"base1-{number}", "number": number}
+            )
+    stats = MemoryStatsCollector(Crawler(TCGdexSpider))
+    middleware = SkipExistingCardsMiddleware(repository, stats)
+    try:
+        # Repeating a bounded request must inspect the same first candidates,
+        # rather than advancing to the third card because the first two exist.
+        for attempt in (1, 2):
+            spider = TCGdexSpider(
+                languages="fr,en",
+                card_ids="base1-1,base1-2,base1-3" if explicit_ids else "",
+                limit=limit,
+            )
+
+            async def start_requests(candidate_spider):
+                return [request async for request in candidate_spider.start()]
+
+            requests = asyncio.run(start_requests(spider))
+            if not explicit_ids:
+                requests = [
+                    candidate
+                    for listing in requests
+                    for candidate in spider.parse(
+                        TextResponse(
+                            url=listing.url,
+                            body=b'[{"id":"base1-1"},{"id":"base1-2"},{"id":"base1-3"}]',
+                            encoding="utf-8",
+                        ),
+                        **listing.cb_kwargs,
+                    )
+                ]
+            downloads = []
+            for request in requests:
+                try:
+                    middleware.process_request(request)
+                except IgnoreRequest:
+                    continue
+                identity = request.meta["card_identity"]
+                downloads.append((identity["language"], identity["source_id"]))
+
+            assert downloads == expected_downloads
+            assert stats.get_value("cards/skipped_existing") == 4 * attempt
+            assert repository.search()["total"] == 4
+    finally:
+        middleware.close()
+
+
 def test_tcgdex_api_policy_is_scoped_to_spider():
     from scrapy.settings import Settings
     from tcg_scraping import settings

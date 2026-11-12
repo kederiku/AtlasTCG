@@ -79,6 +79,18 @@ comme ignoré. Une carte d’une ancienne version reste éligible à la recollec
 Si Scrapy s'arrête sur robots.txt, signale une erreur ou rejette un item, le job ne
 s'affiche pas comme réussi, même avec un code processus zéro.
 
+Étant donné une impression avec plusieurs images déjà conservées, quand une
+recollecte reçoit une image valide puis une autre absente ou corrompue, alors la
+collecte échoue et l’observation précédente, sa date et tous ses fichiers restent
+inchangés. Les fichiers de remplacement ne sont publiés qu’une fois tous les
+téléchargements et conversions de cette impression réussis.
+
+Étant donné deux demandes en attente, quand le collecteur échoue sur la première,
+alors son erreur et ses dates sont conservées et la suivante peut être exécutée.
+L’arrêt contrôlé du worker interrompt son enfant et marque la demande active comme
+interrompue, sans consommer la demande suivante. Un second worker sur le même
+répertoire de jobs est refusé sans modifier la collecte du premier.
+
 ## Lancement Docker
 
 Étant donné une configuration locale et un dossier de données accessible,
@@ -106,6 +118,8 @@ clés de statistiques Scrapy.
 
 - `tests/acceptance/` : scénarios Gherkin et étapes API.
 - `tests/integration/` : collectes, normalisation/persistance et réindexation.
+  Celle-ci refuse les données invalides et toute modification d’identité,
+  d’extension ou de numéro sans altérer l’observation, puis traite la suivante.
 - `tests/architecture/` : frontières de dépendance et nommage sans Scrapy.
 - `packages/core/tests/` : contrat multijeu, nommage et exécution indépendante.
 - `packages/persistence/tests/` : transactions, identités, requêtes, migrations et configuration.

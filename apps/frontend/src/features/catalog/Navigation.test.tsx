@@ -183,3 +183,114 @@ test("keeps navigation names stable while facets are unavailable", async () => {
     ),
   ).toBe("bw4");
 });
+
+test("paginates groups while preserving filters and resets the page when the card language changes", async () => {
+  const fetcher = vi.fn(async (path: string) => {
+    const parameters = new URL(path, "http://localhost").searchParams;
+    const page = Number(parameters.get("page"));
+    const first = page === 1 ? 1 : 25;
+    const size = page === 1 ? 24 : 1;
+    return Response.json({
+      items: Array.from({ length: size }, (_, index) => {
+        const number = String(first + index);
+        const printings = versions.map((version) => ({
+          ...version,
+          source_id: `bw4-${number}`,
+          number,
+          name: `Carte ${number}`,
+        }));
+        return {
+          ...printings[parameters.get("language") === "es" ? 1 : 0],
+          versions: printings,
+        };
+      }),
+      total: 25,
+      page,
+      page_size: 24,
+    });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter
+        initialEntries={[
+          "/?q=Carte&game=pokemon&language=es&block=pokemon%2Ftcgdex%2Fbw&set=pokemon%2Ftcgdex%2Fbw4",
+        ]}
+      >
+        <CatalogPanel overview={overview} onCollect={() => {}} />
+        <Controls />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole("heading", { name: "Carte 1" });
+  expect(screen.getAllByRole("article")).toHaveLength(24);
+  expect(screen.getByText("25 cartes · Page 1 sur 2")).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Page précédente" }),
+  ).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
+  expect(
+    await screen.findByRole("heading", { name: "Carte 25" }),
+  ).toBeVisible();
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(screen.getByText("25 cartes · Page 2 sur 2")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Page suivante" })).toBeDisabled();
+  const address = new URLSearchParams(
+    screen.getByLabelText("Address").textContent ?? "",
+  );
+  expect(Object.fromEntries(address)).toEqual({
+    q: "Carte",
+    game: "pokemon",
+    language: "es",
+    block: "pokemon/tcgdex/bw",
+    set: "pokemon/tcgdex/bw4",
+    page: "2",
+  });
+  const request = new URL(
+    String(fetcher.mock.lastCall?.[0]),
+    "http://localhost",
+  );
+  expect(Object.fromEntries(request.searchParams)).toEqual({
+    q: "Carte",
+    language: "es",
+    display_language: "fr",
+    game: "pokemon",
+    source: "tcgdex",
+    set_id: "bw4",
+    block_id: "bw",
+    page: "2",
+    page_size: "24",
+  });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Page précédente" }),
+  );
+  await screen.findByRole("heading", { name: "Carte 1" });
+  expect(
+    screen.getByRole("button", { name: "Page précédente" }),
+  ).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name: "Page suivante" }));
+  await screen.findByRole("heading", { name: "Carte 25" });
+  await userEvent.selectOptions(
+    screen.getByRole("combobox", { name: "Langue des cartes" }),
+    "fr",
+  );
+  await screen.findByRole("heading", { name: "Carte 1" });
+  expect(
+    Object.fromEntries(
+      new URLSearchParams(screen.getByLabelText("Address").textContent ?? ""),
+    ),
+  ).toEqual({
+    q: "Carte",
+    game: "pokemon",
+    language: "fr",
+    block: "pokemon/tcgdex/bw",
+    set: "pokemon/tcgdex/bw4",
+  });
+  expect(screen.getByRole("combobox", { name: "Filtrer par set" })).toHaveValue(
+    "pokemon/tcgdex/bw4",
+  );
+  client.clear();
+});

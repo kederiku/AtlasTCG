@@ -70,7 +70,10 @@ Les noms sont normalisés de façon stable, avec hash en cas de caractères non 
 
 Une image absente à la source n’empêche pas de conserver une carte. Un échec de
 transfert/conversion d’une image déclarée rejette la nouvelle observation et garde
-l’éventuelle version précédente. Les cartes déjà au contrat courant sont ignorées
+l’éventuelle version précédente. Pour une impression à plusieurs images, aucune
+image de remplacement n’est publiée tant que tous les transferts et conversions
+n’ont pas réussi ; un échec conserve aussi les fichiers précédents.
+Les cartes déjà au contrat courant sont ignorées
 même sans image : utiliser une actualisation explicite pour les réparer. Une carte
 d’une ancienne version peut être recollectée ; la réindexation permet de remettre
 sa projection à jour hors ligne avant de reprendre les collectes.

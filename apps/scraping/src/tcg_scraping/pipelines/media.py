@@ -2,6 +2,8 @@
 
 import hashlib
 from io import BytesIO
+from pathlib import Path
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from PIL import Image, ImageOps
 from scrapy import Request
@@ -21,6 +23,12 @@ def encode_webp(body):
 
 
 class WebPImagesPipeline(FilesPipeline):
+    @classmethod
+    def from_crawler(cls, crawler):
+        pipeline = super().from_crawler(crawler)
+        pipeline.staging = TemporaryDirectory(prefix=".pending-webp-", dir=pipeline.store.basedir)
+        return pipeline
+
     def get_media_requests(self, item, info):
         if item.get("kind") in {"set", "block"}:
             return []
@@ -33,20 +41,44 @@ class WebPImagesPipeline(FilesPipeline):
         return request.meta["image_storage_path"]
 
     def file_downloaded(self, response, request, info, *, item=None):
-        return deferToThread(self._convert_and_store, response, request, info, item)
+        return deferToThread(self._convert_and_stage, response, request)
 
-    def _convert_and_store(self, response, request, info, item):
+    def _convert_and_stage(self, response, request):
         body = encode_webp(response.body)
-        path = self.file_path(request, response=response, info=info, item=item)
-        self.store.persist_file(
-            path, BytesIO(body), info, meta=None, headers={"Content-Type": "image/webp"}
-        )
+        with NamedTemporaryFile(dir=self.staging.name, delete=False) as staged:
+            staged.write(body)
+            request.meta["webp_staging_path"] = staged.name
         return hashlib.sha256(body).hexdigest()
+
+    async def media_downloaded(self, response, request, info, *, item=None):
+        result = await super().media_downloaded(response, request, info, item=item)
+        result["webp_staging_path"] = request.meta.pop("webp_staging_path")
+        return result
 
     def item_completed(self, results, item, info):
         if item.get("kind") in {"set", "block"}:
             return item
-        item["images"] = [result for success, result in results if success]
         if any(not success for success, _ in results):
             raise DropItem(f"Image download/conversion failed: {item['source_id']}")
+        return deferToThread(self._publish, [result for _, result in results], item, info)
+
+    def _publish(self, results, item, info):
+        for result in results:
+            staged = result.get("webp_staging_path")
+            if staged:
+                self.store.persist_file(
+                    result["path"],
+                    BytesIO(Path(staged).read_bytes()),
+                    info,
+                    meta=None,
+                    headers={"Content-Type": "image/webp"},
+                )
+        item["images"] = [
+            {key: value for key, value in result.items() if key != "webp_staging_path"}
+            for result in results
+        ]
         return item
+
+    def close_spider(self):
+        # Cached Scrapy results can be reused by another item until the crawl ends.
+        self.staging.cleanup()

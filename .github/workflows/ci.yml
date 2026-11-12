@@ -1,0 +1,75 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-suffix: quality
+      - name: Install Python from .python-version
+        run: uv python install
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Install locked dependencies
+        run: make install
+      - name: Check Python, frontend and production build
+        run: make test
+      - name: Verify migrations against a temporary SQLite database
+        env:
+          TCG_DATABASE_URL: sqlite:///${{ runner.temp }}/tcg-ci-migrations.db
+        run: |
+          uv run --locked alembic upgrade head
+          uv run --locked alembic check
+
+  installations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          cache-suffix: installations
+      - name: Install Python from .python-version
+        run: uv python install
+      - name: Verify four independent, non-editable installations
+        run: make test-installations
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the isolated runtime images
+        env:
+          POSTGRES_PASSWORD: ci-build-only
+        run: make docker-build
+      - name: Verify an isolated stack and persistence
+        run: make docker-test

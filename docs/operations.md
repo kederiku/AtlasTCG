@@ -109,6 +109,25 @@ Le formulaire de l’admin et `POST /api/jobs` enregistrent une demande exécut�
 le worker unique. Utiliser cette [API](api.md#soumettre-et-suivre-une-collecte) pour
 piloter les collectes depuis un script et conserver leur historique.
 
+Dans **Nouvelle collecte**, choisir un bloc puis **Tout le bloc** ou une extension.
+**Tous les blocs** permet de choisir directement une extension, même sans bloc et
+encore absente de la base. Une sélection précise est obligatoire ; ce filtre
+n’autorise pas la collecte implicite de tout TCGdex. Le mode avancé conserve les
+identifiants de cartes (100 maximum). Les langues indisponibles sont signalées.
+L’accès aux listes exige TCGdex disponible : une panne propose « Réessayer » et
+ne crée aucune donnée locale. Le cache navigateur des options dure cinq minutes.
+
+Pour compléter les images des données déjà en base, ouvrir **Collectes → Réparer
+les images manquantes**. Cette action globale conserve les fichiers présents et
+toutes les observations. Elle télécharge depuis les URL connues ; sans URL ni
+image locale, elle recherche l’image dans la fiche TCGdex de la même langue.
+Le worker traite la demande à son tour. Le journal affiche le bilan final
+(examinées, téléchargées, présentes, indisponibles, erreurs) ; les erreurs
+techniques donnent un statut d’échec, même si d’autres cartes ont été réparées.
+Relancer l’action réessaie les manquantes. Un fichier présent mais corrompu ou une
+URL connue devenue invalide nécessite une intervention distincte. L’API accepte
+`{"kind":"repair_images"}` ; voir [le contrat](api.md#réparer-les-images-du-catalogue).
+
 Pour un crawl CLI direct, vérifier d’abord la fin de la file comme décrit plus
 haut, puis garder API et worker habituels arrêtés pendant la commande :
 
@@ -130,7 +149,10 @@ courant, même sans image, est ignorée par défaut ; une ancienne version peut 
 recollectée. `limit` borne les premiers candidats de chaque langue, avant le
 filtrage des existants, même avec des identifiants explicites. Il ne borne pas le
 nombre de nouvelles cartes et ne constitue pas un curseur de progression.
-La CLI accepte `-a limit=0` pour tous les candidats ; l’API exige 1 à 10 000.
+La CLI accepte `-a limit=0` pour tous les candidats ; la variante historique de
+l’API exige 1 à 10 000. Pour un périmètre complet, remplacer `card_ids` et `limit`
+par `-a block_id=swsh` ou `-a set_id=swsh12.5`, jamais les deux. Les demandes
+`kind=collect_scope` de l’admin utilisent ce parcours sans limite de candidats.
 Sans identifiants explicites, les listes source sont lues pour découvrir les candidats.
 
 Reprise CLI avec `-s JOBDIR=/data/jobs/tcgdex-fr-001` : réutiliser ce dossier seulement
@@ -150,6 +172,12 @@ interruption, créer une nouvelle demande adaptée aux cartes restantes ; réuti
 la même limite ne garantit pas de dépasser les premiers candidats. Les demandes
 `queued` survivent au redémarrage. Ces limites et statuts ne sont pas appliqués par
 le lanceur CLI direct.
+
+Un bloc dans plusieurs langues peut dépasser cette heure. Redemander le même
+périmètre sans actualisation ignore les cartes déjà persistées. Aucun découpage
+automatique en sous-demandes n’est réalisé. Un périmètre inexistant dans certaines
+langues les signale dans `scope/languages_unavailable` ; s’il n’existe dans aucune,
+le job échoue. Une ressource annoncée mais introuvable est une erreur de collecte.
 
 ## Sauvegarder
 

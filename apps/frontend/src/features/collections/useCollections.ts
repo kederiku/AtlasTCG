@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { getJobs, requestCollection } from "./api";
+import { getJobs, requestCollection, requestImageRepair } from "./api";
 import type { Job } from "./types";
 
 export function useCollections() {
@@ -25,6 +25,12 @@ export function useCollections() {
   const active =
     jobs.data?.filter((job) => ["queued", "running"].includes(job.status))
       .length || 0;
+  const repairMutation = useMutation({
+    mutationFn: requestImageRepair,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
   const openForm = () => {
     mutation.reset();
     setCollect(true);
@@ -37,6 +43,7 @@ export function useCollections() {
     selectedJob,
     setSelectedJob,
     mutation,
+    repairMutation,
     openForm,
   };
 }

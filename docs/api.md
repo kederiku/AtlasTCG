@@ -114,12 +114,43 @@ L’ordre est indépendant de `display_language`. Les routes `/api/cards` et
 | Route | Résultat |
 |---|---|
 | `GET /api/spiders` | Connecteurs déclarés : `id`, `name`, `game`, `languages` |
+| `GET /api/collection-options/tcgdex/blocks` | Choix de blocs disponibles à la source |
+| `GET /api/collection-options/tcgdex/sets` | Choix d’extensions, éventuellement filtrés par bloc |
 | `POST /api/jobs` | Demande créée avec statut `queued`, HTTP 202 |
 | `GET /api/jobs` | Les 50 demandes les plus récentes, de la plus récente à la plus ancienne |
 | `GET /api/jobs/{identifier}` | Une demande, identifiée par son UUID |
 | `GET /api/jobs/{identifier}/logs` | Texte UTF-8 des derniers 64 000 octets du journal |
 
-Seul `tcgdex` est implémenté. Le corps JSON n’accepte que les champs suivants :
+Seul `tcgdex` est implémenté pour l’acquisition des cartes. Le formulaire soumet une
+demande de périmètre complet :
+
+```json
+{"kind":"collect_scope","spider":"tcgdex","languages":["fr","en"],"scope":{"kind":"set","id":"swsh12.5"},"force":false}
+```
+
+`scope.kind` accepte `block` ou `set`. Le code fait de 1 à 100 caractères,
+commence par un caractère alphanumérique puis accepte `[A-Za-z0-9._-]`.
+Les points des identifiants TCGdex sont conservés. `limit` et `card_ids` sont refusés
+dans cette variante. Toutes les cartes annoncées dans le périmètre et la langue
+sont visitées, sous réserve de l’évitement des existants et des limites d’exécution.
+La soumission ne contacte pas TCGdex ; le worker découvre le périmètre à l’exécution.
+Les compteurs `scope/languages_found` et `scope/languages_unavailable` distinguent
+les langues disponibles et les 404 racines. Si aucune langue n’est disponible,
+le job échoue. Un échec HTTP sur une carte ou extension annoncée fait aussi échouer
+le job, en conservant les résultats partiels.
+
+Les deux lectures de choix exigent `languages=fr,en` et acceptent `locale=fr`
+(défaut, ou `en`/`es`). La route `/sets` accepte aussi `block_id=swsh`. Sans bloc,
+elle propose toutes les extensions, y compris sans rattachement. La réponse est
+une liste de `{id, name, languages}` : codes regroupés, noms selon l’ADR 0007,
+langues disponibles limitées aux langues demandées. Les métadonnées de libellé
+ne rendent pas admissible un choix absent de toutes les langues demandées.
+Un paramètre invalide renvoie 422 ; une source indisponible/malformée renvoie 503 ;
+un périmètre localisé absent (404 fournisseur) ne fournit aucun choix dans cette
+langue. Aucun résultat partiel n’est renvoyé comme une liste complète.
+
+L’API historique, sans `kind`, et les demandes déjà enregistrées restent compatibles.
+Son corps JSON n’accepte que les champs suivants :
 
 | Champ | Défaut / contrainte |
 |---|---|
@@ -166,3 +197,28 @@ des 50 dernières demandes, mais une demande ancienne reste accessible par son U
 Les règles de timeout, d’arrêt et de maintenance figurent dans
 [le guide d’exploitation](operations.md). Les schémas HTTP vivent dans
 `apps/api/src/tcg_api/schemas/`, leurs routes dans `apps/api/src/tcg_api/routes/`.
+
+### Réparer les images du catalogue
+
+`POST /api/jobs` accepte aussi exactement `{"kind":"repair_images"}` avec les mêmes
+en-têtes d’administration. Cette demande globale parcourt toutes les impressions
+existantes et leurs langues, sans limite de candidats ni acquisition de nouvelles
+cartes. Elle partage la file, les statuts et les journaux des collectes ordinaires.
+`parameters` contient alors uniquement `kind` ; les anciens paramètres sans `kind`
+restent compatibles. Tout champ supplémentaire est refusé.
+
+Un WebP absent est téléchargé depuis l’URL enregistrée. Sans URL ni fichier local,
+la fiche Pokémon/TCGdex de la même impression est consultée pour rechercher l’image.
+Une fiche absente ou sans image est comptée comme indisponible. Une erreur technique
+est journalisée et fait échouer le job, tout en laissant les autres impressions être
+traitées. Les URL découvertes sont conservées, même en cas d’échec du téléchargement.
+Les observations, données brutes et dates restent intactes.
+
+Le bilan final utilise `images/examined` (impressions), `images/downloaded`,
+`images/present`, `images/unavailable` (impressions sans image disponible) et
+`images/errors`. Une clé absente vaut zéro pour l’affichage. Pendant l’exécution,
+seul le journal est disponible ; une interruption peut ne pas avoir de bilan final.
+
+Une nouvelle demande ignore les fichiers désormais présents. Les fichiers présents
+mais corrompus ne sont pas diagnostiqués ; une URL connue devenue invalide est une
+erreur de téléchargement, sans redécouverte automatique.

@@ -1,4 +1,30 @@
 export const messages = {
+  "Réparer les images manquantes": [
+    "Repair missing images",
+    "Reparar las imágenes que faltan",
+  ],
+  "Réparation des images": ["Image repair", "Reparación de imágenes"],
+  "Images du catalogue": ["Catalog images", "Imágenes del catálogo"],
+  "Complétez les images de toutes les cartes déjà enregistrées, dans toutes leurs langues. Les fichiers présents sont conservés.":
+    [
+      "Complete images for all stored cards, in every language. Existing files are kept.",
+      "Completa las imágenes de todas las cartas guardadas, en todos sus idiomas. Se conservan los archivos existentes.",
+    ],
+  "La demande de réparation a échoué. Réessayez.": [
+    "The repair request failed. Try again.",
+    "La solicitud de reparación ha fallado. Inténtalo de nuevo.",
+  ],
+  Ajoutées: ["Added", "Añadidas"],
+  "Déjà présentes": ["Already present", "Ya presentes"],
+  "Impressions examinées": ["Printings examined", "Versiones examinadas"],
+  "Images téléchargées": ["Downloaded images", "Imágenes descargadas"],
+  "Images déjà présentes": ["Existing images", "Imágenes existentes"],
+  "Images indisponibles": ["Unavailable images", "Imágenes no disponibles"],
+  Erreurs: ["Errors", "Errores"],
+  "Le bilan sera disponible à la fin de la réparation.": [
+    "The summary will be available when the repair finishes.",
+    "El resumen estará disponible cuando termine la reparación.",
+  ],
   "Langue de l’interface": ["Interface language", "Idioma de la interfaz"],
   "atlasTCG accueil": ["atlasTCG home", "Inicio de atlasTCG"],
   "ESPACE TCG": ["TCG WORKSPACE", "ESPACIO TCG"],
@@ -240,19 +266,41 @@ export const messages = {
     "TCGdex source unavailable.",
     "Fuente TCGdex no disponible.",
   ],
-  "Nombre maximal par langue": ["Maximum per language", "Máximo por idioma"],
-  "Les cartes déjà présentes sont ignorées. Le total importé peut être inférieur.":
+  Extension: ["Set", "Expansión"],
+  "Tout le bloc": ["Entire series", "Toda la serie"],
+  "Choisir une extension": ["Choose a set", "Elige una expansión"],
+  "Cartes précises (avancé)": [
+    "Specific cards (advanced)",
+    "Cartas concretas (avanzado)",
+  ],
+  "Chargement des blocs et extensions…": [
+    "Loading series and sets…",
+    "Cargando series y expansiones…",
+  ],
+  "Impossible de charger les blocs et extensions.": [
+    "Unable to load series and sets.",
+    "No se pudieron cargar las series y expansiones.",
+  ],
+  "Aucune extension disponible pour cette sélection.": [
+    "No sets available for this selection.",
+    "No hay expansiones disponibles para esta selección.",
+  ],
+  "Indisponible pour : {languages}": [
+    "Unavailable in: {languages}",
+    "No disponible en: {languages}",
+  ],
+  "Toutes les cartes du périmètre choisi seront parcourues. Les cartes déjà présentes sont ignorées sauf actualisation.":
     [
-      "Existing cards are skipped. The imported total may be lower.",
-      "Las cartas existentes se omiten. El total importado puede ser menor.",
+      "All cards in the selected scope will be checked. Existing cards are skipped unless refreshing.",
+      "Se recorrerán todas las cartas de la selección. Las existentes se omiten salvo actualización.",
     ],
+  "Langues indisponibles": ["Unavailable languages", "Idiomas no disponibles"],
+  "Sans actualisation": ["Without refresh", "Sin actualización"],
   "Identifiants de cartes": ["Card identifiers", "Identificadores de cartas"],
-  facultatif: ["optional", "opcional"],
-  "Sépare les identifiants par des virgules, ou laisse vide pour parcourir le catalogue.":
-    [
-      "Separate identifiers with commas, or leave blank to browse the catalog.",
-      "Separa los identificadores con comas o déjalo vacío para recorrer el catálogo.",
-    ],
+  "Sépare les identifiants par des virgules (100 maximum).": [
+    "Separate identifiers with commas (100 maximum).",
+    "Separa los identificadores con comas (máximo 100).",
+  ],
   "Actualiser aussi les cartes déjà en base": [
     "Refresh existing cards too",
     "Actualizar también las cartas existentes",

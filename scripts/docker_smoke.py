@@ -200,6 +200,72 @@ repository.close()
                 assert state["stats"]["cards/skipped_existing"] == 1
                 assert request(f"/api/jobs/{job['id']}/logs")
             print("API, deep link, WebP, worker and duplicate filtering verified.", flush=True)
+            # Repair a missing image using only this temporary project's local HTTP server.
+            run(
+                "exec",
+                "-d",
+                "worker",
+                "python",
+                "-m",
+                "http.server",
+                "8765",
+                "--bind",
+                "127.0.0.1",
+                "--directory",
+                "/data/images/pokemon/fr/base1",
+            )
+            run(
+                "exec",
+                "-T",
+                "worker",
+                "python",
+                "-",
+                input="""
+from pathlib import Path
+from tcg_persistence.catalog import Repository
+from tcg_persistence.configuration import database_url
+from tcg_persistence.image_repair import SqlImageRepairStore
+repository = Repository(database_url())
+store = SqlImageRepairStore(repository.engine)
+candidate = next(card for card in store.candidates(batch_size=1) if card.language == 'es')
+store.update_image_urls(candidate, ['http://127.0.0.1:8765/4-base1.webp'])
+store.update_images(candidate, [])
+Path('/data/images/pokemon/es/base1/4-base1.webp').unlink()
+repository.close()
+""",
+            )
+            es_path = "/api/cards/detail?game=pokemon&source=tcgdex&source_id=base1-4&language=es"
+            before_repair = json.loads(request(es_path))
+            repair = json.loads(request("/api/jobs", {"kind": "repair_images"}))
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                state = json.loads(request(f"/api/jobs/{repair['id']}"))
+                if state["status"] not in {"queued", "running"}:
+                    break
+                time.sleep(0.25)
+            assert state["status"] == "succeeded", request(
+                f"/api/jobs/{repair['id']}/logs"
+            ).decode()
+            assert state["stats"]["images/downloaded"] == 1
+            assert state["stats"]["images/present"] == 1
+            repaired = json.loads(request(es_path))
+            assert {k: v for k, v in repaired.items() if k not in {"image_urls", "versions"}} == {
+                k: v for k, v in before_repair.items() if k not in {"image_urls", "versions"}
+            }
+            assert [
+                {k: v for k, v in version.items() if k != "image_urls"}
+                for version in repaired["versions"]
+            ] == [
+                {k: v for k, v in version.items() if k != "image_urls"}
+                for version in before_repair["versions"]
+            ]
+            repaired_image = request(repaired["image_urls"][0])
+            assert repaired_image[:4] == b"RIFF" and repaired_image[8:12] == b"WEBP"
+            assert request(detail["image_urls"][0]) == image
+            print(
+                "Queued image repair and observation preservation verified on PostgreSQL.",
+                flush=True,
+            )
             run(
                 "exec",
                 "-T",
@@ -230,7 +296,7 @@ asyncio.run(check())
                         raise
                     time.sleep(0.25)
             assert json.loads(request("/api/overview"))["total"] == 2
-            assert len(json.loads(request("/api/jobs"))) == 2
+            assert len(json.loads(request("/api/jobs"))) == 3
             assert request(detail["image_urls"][0]) == image
             print("Chromium and persistence after restart verified.", flush=True)
         except Exception:

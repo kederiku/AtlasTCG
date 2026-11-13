@@ -73,8 +73,10 @@ explicitement le transfert du volume.
 
 ## Utilisation
 
-Depuis **Nouvelle collecte**, choisir les langues et le nombre de candidats.
-La limite compte les cartes examinées, y compris celles déjà présentes. Les cartes
+Depuis **Nouvelle collecte**, choisir les langues, un bloc puis **Tout le bloc**
+ou une extension. Avec **Tous les blocs**, choisir une extension précise, même
+si elle n’a pas encore été importée. Les listes proviennent de TCGdex ; les langues
+indisponibles sont indiquées. Toutes les cartes du périmètre sont parcourues. Les cartes
 déjà au contrat courant sont ignorées avant le téléchargement du détail et des images.
 Une ancienne version du contrat peut être recollectée. L’option
 actualisation force la relecture des données ; elle conserve le cache des images.
@@ -83,9 +85,10 @@ La [référence API](docs/api.md#soumettre-et-suivre-une-collecte) montre commen
 soumettre la même demande depuis un script en utilisant la file du worker.
 Pour un crawl Scrapy direct, suivre la [procédure CLI](docs/operations.md#collecter-et-actualiser),
 qui évite les collectes concurrentes et explique le rafraîchissement des images.
-Le mode CLI accepte `-a limit=0` pour tous les candidats ; l’admin impose une limite
-entre 1 et 10 000 par langue. Le formulaire expose six langues ; l’API en accepte
-onze, selon les capacités déclarées du connecteur.
+La saisie **Cartes précises (avancé)** accepte jusqu’à 100 identifiants, sans
+combinaison avec un bloc/une extension. Le formulaire et l’API exposent les 18 langues
+déclarées par le connecteur ; français et anglais sont cochés par défaut.
+L’API historique conserve les demandes bornées ; la CLI accepte aussi `-a limit=0`.
 
 Une fiche dispose d’une URL stable, par exemple
 [/cards/pokemon/tcgdex/fr/base1-4](http://127.0.0.1:8000/cards/pokemon/tcgdex/fr/base1-4).

@@ -9,6 +9,7 @@ import {
 import { CollectForm } from "./CollectForm";
 import { JobLogs } from "./JobLogs";
 import type { useCollections } from "./useCollections";
+import { isImageRepair } from "./types";
 export function CollectionDialogs({
   collections,
 }: {
@@ -44,7 +45,11 @@ export function CollectionDialogs({
           <DialogHeader>
             <DialogTitle>{t("Journal de collecte")}</DialogTitle>
             <DialogDescription>
-              {selectedJob?.parameters.spider} · {selectedJob?.id}
+              {selectedJob &&
+                (isImageRepair(selectedJob.parameters)
+                  ? t("Réparation des images")
+                  : selectedJob.parameters.spider)}{" "}
+              · {selectedJob?.id}
             </DialogDescription>
           </DialogHeader>
           {selectedJob && (

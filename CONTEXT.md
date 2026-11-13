@@ -13,6 +13,8 @@ Deux contextes : **Catalogue** et **Collectes**. Aucun nom de carte ne sert d'id
 | Observation | Dernières informations validées pour une impression ; `raw` conserve la réponse source hors prix. |
 | Asset / image | Fichier WebP local associé à une impression, éventuellement plusieurs faces. |
 | Demande de collecte | Paramètres validés, enregistrés avant toute exécution. |
+| Périmètre de collecte | Bloc entier ou extension identifiée dans la source, parcouru dans les langues demandées sans limite de candidats. Les choix distants ne sont pas des observations du catalogue. |
+| Réparation des images | Demande portant sur les impressions existantes : compléter leurs WebP manquants, avec recherche d’URL TCGdex si nécessaire, sans remplacer leurs observations. |
 | Collecte / job | Exécution d'une demande : queued → running → succeeded ou failed. Une interruption devient interrupted. |
 | Worker | Processus unique qui exécute séquentiellement les demandes en attente, sur l’hôte ou dans Docker. |
 

@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 from tcg_core.collections.connectors import CONNECTORS
-from tcg_core.collections.models import CollectionRequest
+from tcg_core.collections.models import JobRequest
 from tcg_core.collections.queries import CollectionQueries
 from tcg_core.collections.submission import RequestCollection
 
@@ -30,7 +30,7 @@ def collection_routes(submission: RequestCollection, queries: CollectionQueries)
         response_model=JobView,
         dependencies=[Depends(require_local_admin)],
     )
-    def enqueue_job(parameters: CollectionRequest):
+    def enqueue_job(parameters: JobRequest):
         return submission.request(parameters)
 
     @router.get("/api/jobs/{identifier}", response_model=JobView)

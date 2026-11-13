@@ -5,6 +5,10 @@ from scrapy.exceptions import IgnoreRequest
 from tcg_persistence.catalog import Repository
 
 
+class CardAlreadyStored(IgnoreRequest):
+    """An intentional skip, distinct from a failed acquisition."""
+
+
 class SkipExistingCardsMiddleware:
     def __init__(self, repository, stats):
         self.repository = repository
@@ -21,7 +25,7 @@ class SkipExistingCardsMiddleware:
         if identity and not request.meta.get("force_refresh", False):
             if self.repository.contains(**identity):
                 self.stats.inc_value("cards/skipped_existing")
-                raise IgnoreRequest(f"Card already stored: {identity}")
+                raise CardAlreadyStored(f"Card already stored: {identity}")
 
     def close(self):
         self.repository.close()

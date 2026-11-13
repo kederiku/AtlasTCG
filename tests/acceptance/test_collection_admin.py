@@ -1,6 +1,62 @@
+import pytest
 from pytest_bdd import given, scenarios, then, when
 
 scenarios("features/collection.feature")
+
+
+@when(
+    "I request the complete TCGdex extension swsh12.5 in French and English",
+    target_fixture="job",
+)
+def enqueue_scope(client):
+    response = client.post(
+        "/api/jobs",
+        json={
+            "kind": "collect_scope",
+            "languages": ["fr", "en", "fr"],
+            "scope": {"kind": "set", "id": "swsh12.5"},
+        },
+        headers={"X-TCG-Admin": "1"},
+    )
+    assert response.status_code == 202
+    return response.json()
+
+
+@then("the queued collection preserves the extension without a card limit")
+def queued_scope(client, job):
+    expected = {
+        "kind": "collect_scope",
+        "spider": "tcgdex",
+        "languages": ["fr", "en"],
+        "scope": {"kind": "set", "id": "swsh12.5"},
+        "force": False,
+    }
+    assert job["status"] == "queued"
+    assert job["parameters"] == expected
+    assert client.get(f"/api/jobs/{job['id']}").json()["parameters"] == expected
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"limit": 10},
+        {"card_ids": ["base1-1"]},
+        {"scope": {"kind": "block", "id": "../base"}},
+        {"scope": {"kind": "block", "id": "--settings=evil"}},
+        {"scope": {"kind": "block", "id": ""}},
+        {"scope": {"kind": "all", "id": "base"}},
+        {"languages": ["xx"]},
+    ],
+)
+def test_scoped_request_rejects_ambiguous_or_unsafe_parameters(client, extra):
+    response = client.post(
+        "/api/jobs",
+        json={"kind": "collect_scope", "scope": {"kind": "block", "id": "base"}} | extra,
+        headers={"X-TCG-Admin": "1"},
+    )
+    assert response.status_code == 422
+    assert client.get("/api/jobs").json() == []
+
 
 TCGDEX_LANGUAGES = [
     "en",
@@ -22,6 +78,33 @@ TCGDEX_LANGUAGES = [
     "th",
     "zh-cn",
 ]
+
+
+@when("I request a repair of missing images", target_fixture="job")
+def enqueue_image_repair(client):
+    response = client.post(
+        "/api/jobs", json={"kind": "repair_images"}, headers={"X-TCG-Admin": "1"}
+    )
+    assert response.status_code == 202
+    return response.json()
+
+
+@then("an image repair appears in the persistent history")
+def queued_image_repair(client, job):
+    assert job["status"] == "queued"
+    assert job["parameters"] == {"kind": "repair_images"}
+    assert client.get(f"/api/jobs/{job['id']}").json()["parameters"] == job["parameters"]
+    assert client.get("/api/jobs").json()[0]["parameters"] == job["parameters"]
+
+
+def test_image_repair_does_not_accept_arbitrary_urls_or_collection_options(client):
+    for extra in ({"url": "https://example.com"}, {"force": True}, {"limit": 1}):
+        response = client.post(
+            "/api/jobs",
+            json={"kind": "repair_images"} | extra,
+            headers={"X-TCG-Admin": "1"},
+        )
+        assert response.status_code == 422
 
 
 @then("all eighteen TCGdex languages are available")

@@ -136,6 +136,32 @@ le code de sortie en `CollectionResult`. Les diagnostics bruts sont conservés p
 l’administration ; le métier ne connaît pas leurs clés. L’API lit les derniers
 64 Ko du journal avec un adaptateur fichier, derrière un port de consultation.
 
+`ScopedCollectionRequest(kind="collect_scope")` cible un bloc ou une extension,
+sans limite de candidats. `CollectionOptions` prépare les choix derrière le port
+`CollectionDiscovery`. L’adaptateur HTTP de l’API lit les listes TCGdex sans
+enregistrer d’observation ; il borne ses lectures à quatre requêtes simultanées,
+5 secondes par opération socket, 30 secondes d’attente de lot et 2 Mio par réponse,
+et refuse les redirections. React Query conserve ces résultats cinq minutes.
+Le worker résout à nouveau le périmètre ; le spider sépare son expansion de
+l’enrichissement des métadonnées pour ne pas élargir une extension à son bloc.
+Les variantes historiques et la réparation restent distinctes. Voir
+[ADR 0009](adr/0009-scoped-collections.md).
+
+La demande `ImageRepairRequest(kind="repair_images")` partage ce flux et utilise
+le spider dédié `repair_images`. `tcg_core.catalog.image_repair.ImageRepair`
+décide des fichiers manquants derrière des ports typés. Le dépôt
+`tcg_persistence.image_repair.SqlImageRepairStore` parcourt les médias par lots
+et ne met à jour que `image_urls` et `images`. Les adaptateurs dans scraping
+vérifient les chemins, découvrent les URL TCGdex nécessaires et réutilisent la
+préparation WebP ; ils n’enregistrent jamais une observation complète. Voir
+[ADR 0008](adr/0008-image-repair.md).
+
+La réparation borne également les impressions en cours à `CONCURRENT_REQUESTS`
+(8 par défaut) : lire SQL par lots ne suffit pas à limiter les items en attente
+dans Scrapy. Une impression libère sa place après persistance, indisponibilité
+ou erreur. La conversion reste parallèle ; la publication des fichiers est
+sérialisée pour protéger le stockage local utilisé depuis les threads.
+
 Le verrou du worker repose sur le répertoire partagé des jobs. Un arrêt contrôlé
 interrompt le sous-processus et marque les jobs `running` comme `interrupted`.
 Après un arrêt brutal, cette récupération a lieu au redémarrage ; les `queued`

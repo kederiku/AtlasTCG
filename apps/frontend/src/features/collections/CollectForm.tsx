@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CollectionRequest } from "./types";
 import { getConnectors } from "./api";
+import {
+  CollectionScopePicker,
+  useCollectionScope,
+} from "./CollectionScopePicker";
 export function CollectForm({
   onSubmit,
   pending,
@@ -18,7 +22,7 @@ export function CollectForm({
   const { t, languageName } = useI18n();
   const [languages, setLanguages] = useState(["fr", "en"]);
   const [ids, setIds] = useState("");
-  const [limit, setLimit] = useState(10);
+  const [preciseCards, setPreciseCards] = useState(false);
   const [force, setForce] = useState(false);
   const connectors = useQuery({
     queryKey: ["connectors"],
@@ -28,26 +32,51 @@ export function CollectForm({
   const selectedLanguages = languages.filter((code) =>
     connector?.languages.includes(code),
   );
-  const canSubmit =
+  const sourceReady =
     !pending &&
     !connectors.isPending &&
     !connectors.isError &&
     selectedLanguages.length > 0;
+  const selection = useCollectionScope(
+    selectedLanguages,
+    sourceReady && !preciseCards,
+  );
+  const cardIds = [
+    ...new Set(
+      ids
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const validIds =
+    cardIds.length > 0 &&
+    cardIds.length <= 100 &&
+    cardIds.every((id) => /^[A-Za-z0-9_-]{1,100}$/.test(id));
+  const canSubmit =
+    sourceReady && (preciseCards ? validIds : !!selection.scope);
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         if (!canSubmit) return;
-        onSubmit({
-          spider: "tcgdex",
-          languages: selectedLanguages,
-          card_ids: ids
-            .split(",")
-            .map((id) => id.trim())
-            .filter(Boolean),
-          limit,
-          force,
-        });
+        if (preciseCards) {
+          onSubmit({
+            spider: "tcgdex",
+            languages: selectedLanguages,
+            card_ids: cardIds,
+            limit: cardIds.length,
+            force,
+          });
+        } else if (selection.scope) {
+          onSubmit({
+            kind: "collect_scope",
+            spider: "tcgdex",
+            languages: selectedLanguages,
+            scope: selection.scope,
+            force,
+          });
+        }
       }}
       className="collect-form"
     >
@@ -101,37 +130,35 @@ export function CollectForm({
           </div>
         )}
       </fieldset>
-      <label>
-        {t("Nombre maximal par langue")}
-        <Input
-          type="number"
-          min={1}
-          max={10000}
-          value={limit}
-          required
-          onChange={(e) => setLimit(Number(e.target.value))}
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={preciseCards}
+          onChange={(event) => setPreciseCards(event.target.checked)}
         />
-        <small>
-          {t(
-            "Les cartes déjà présentes sont ignorées. Le total importé peut être inférieur.",
-          )}
-        </small>
+        {t("Cartes précises (avancé)")}
       </label>
-      <label>
-        {t("Identifiants de cartes")}{" "}
-        <span className="optional">{t("facultatif")}</span>
-        <Input
-          value={ids}
-          onChange={(e) => setIds(e.target.value)}
-          placeholder="base1-4, base1-1"
-          pattern="[A-Za-z0-9_, \-]*"
+      {preciseCards ? (
+        <label>
+          {t("Identifiants de cartes")}
+          <Input
+            value={ids}
+            onChange={(e) => setIds(e.target.value)}
+            placeholder="base1-4, base1-1"
+            pattern="[A-Za-z0-9_, \-]*"
+            required
+          />
+          <small>
+            {t("Sépare les identifiants par des virgules (100 maximum).")}
+          </small>
+        </label>
+      ) : (
+        <CollectionScopePicker
+          selection={selection}
+          languages={selectedLanguages}
+          enabled={sourceReady}
         />
-        <small>
-          {t(
-            "Sépare les identifiants par des virgules, ou laisse vide pour parcourir le catalogue.",
-          )}
-        </small>
-      </label>
+      )}
       <label className="check-row">
         <input
           type="checkbox"

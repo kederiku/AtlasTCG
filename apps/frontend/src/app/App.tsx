@@ -46,6 +46,9 @@ function Application() {
               <CollectionsPanel
                 jobs={collections.jobs}
                 onSelect={collections.setSelectedJob}
+                onRepair={() => collections.repairMutation.mutate()}
+                repairing={collections.repairMutation.isPending}
+                repairError={collections.repairMutation.isError}
               />
             }
           />

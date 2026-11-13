@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -54,8 +54,8 @@ test.each([
       parameters: {
         spider: "tcgdex",
         languages: ["fr", "en"],
-        card_ids: [],
-        limit: 10,
+        kind: "collect_scope",
+        scope: { kind: "block", id: "swsh" },
         force: false,
       },
       stats: { "cards/stored": 10000 },
@@ -68,6 +68,12 @@ test.each([
     vi.stubGlobal(
       "fetch",
       vi.fn(async (path: string, options?: RequestInit) => {
+        if (path.startsWith("/api/collection-options/"))
+          return Response.json(
+            path.includes("/blocks?")
+              ? [{ id: "swsh", name: "Bloc test", languages: ["fr", "en"] }]
+              : [{ id: "swsh3", name: "Set test", languages: ["fr", "en"] }],
+          );
         if (path === "/api/spiders")
           return Response.json([
             {
@@ -109,7 +115,12 @@ test.each([
       </QueryClientProvider>,
     );
     await userEvent.click(screen.getByRole("button", { name: createLabel }));
-    await screen.findByText("TCGdex · Pokémon");
+    await screen.findByRole("option", { name: /Bloc test/ });
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: /^(Bloc|Series|Serie)$/ }),
+      "swsh",
+    );
+    await screen.findByRole("option", { name: /Set test/ });
     await userEvent.click(screen.getByRole("button", { name: submitLabel }));
     expect(
       await screen.findByRole("heading", { name: new RegExp(historyLabel) }),
@@ -122,7 +133,9 @@ test.each([
         name: new Intl.NumberFormat(locale).format(10000),
       }),
     ).toBeVisible();
+    expect(screen.getByText(/swsh/, { selector: "small" })).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: logLabel }));
+    expect(within(screen.getByRole("dialog")).getByText(/swsh/)).toBeVisible();
     expect(
       await screen.findByText("Collecte en attente de traitement"),
     ).toBeInTheDocument();
@@ -136,7 +149,7 @@ test("preserves a failed collection request and prevents duplicate submission wh
     spider: "tcgdex",
     languages: ["fr", "en", "es-mx"],
     card_ids: ["base1-4", "base1-1"],
-    limit: 37,
+    limit: 2,
     force: true,
   };
   const job = {
@@ -160,6 +173,7 @@ test("preserves a failed collection request and prevents duplicate submission wh
   vi.stubGlobal(
     "fetch",
     vi.fn(async (path: string, options?: RequestInit) => {
+      if (path.startsWith("/api/collection-options/")) return Response.json([]);
       if (path === "/api/spiders")
         return Response.json([
           {
@@ -203,16 +217,10 @@ test("preserves a failed collection request and prevents duplicate submission wh
     screen.getByRole("button", { name: "Nouvelle collecte" }),
   );
   await userEvent.click(await screen.findByLabelText("Espagnol (Mexique)"));
+  await userEvent.click(screen.getByLabelText("Cartes précises (avancé)"));
   await userEvent.type(
     screen.getByPlaceholderText("base1-4, base1-1"),
     " base1-4 , base1-1 ",
-  );
-  await userEvent.clear(
-    screen.getByRole("spinbutton", { name: /^Nombre maximal par langue/ }),
-  );
-  await userEvent.type(
-    screen.getByRole("spinbutton", { name: /^Nombre maximal par langue/ }),
-    "37",
   );
   await userEvent.click(
     screen.getByLabelText("Actualiser aussi les cartes déjà en base"),
@@ -236,9 +244,6 @@ test("preserves a failed collection request and prevents duplicate submission wh
   expect(screen.getByPlaceholderText("base1-4, base1-1")).toHaveValue(
     " base1-4 , base1-1 ",
   );
-  expect(
-    screen.getByRole("spinbutton", { name: /^Nombre maximal par langue/ }),
-  ).toHaveValue(37);
   for (const label of ["Français", "Anglais", "Espagnol (Mexique)"])
     expect(screen.getByLabelText(label)).toBeChecked();
   expect(

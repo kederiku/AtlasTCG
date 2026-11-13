@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, field_serializer
-from tcg_core.collections.models import CollectionRequest, JobStatus
+from tcg_core.collections.models import JobRequest, JobStatus
 
 
 class ConnectorView(BaseModel):
@@ -17,7 +17,7 @@ class ConnectorView(BaseModel):
 class JobView(BaseModel):
     id: str
     status: JobStatus
-    parameters: CollectionRequest
+    parameters: JobRequest
     stats: dict[str, Any]
     error: str | None
     created_at: datetime

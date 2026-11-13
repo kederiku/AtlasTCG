@@ -56,10 +56,27 @@ reste sans bloc. Les métadonnées détaillées d’un bloc résistent aux résu
 ## Collecte
 
 Étant donné un admin local, quand je demande une collecte TCGdex avec des langues
-et une limite, alors elle entre dans une file persistante et apparaît dans l'historique.
+et un bloc ou une extension, alors elle entre dans une file persistante et son
+périmètre apparaît dans l’historique et le journal. Les choix viennent de TCGdex,
+y compris quand le catalogue local est vide. « Tous les blocs » exige une extension
+précise ; sélectionner un bloc propose « Tout le bloc » ou une de ses extensions.
+La collecte parcourt toutes les cartes du périmètre, y compris au-delà de dix,
+sans élargir une extension aux autres extensions du même bloc.
+
+Étant donné une extension disponible seulement en EN et les langues FR/EN cochées,
+quand je la choisis, alors FR est indiquée indisponible. Le worker traite EN et
+signale l’absence FR ; un périmètre disparu dans toutes les langues échoue.
+Une erreur source ou une ressource annoncée mais absente n’est pas un succès silencieux.
+Changer de bloc réinitialise l’extension ; changer de langues conserve seulement
+un choix admissible et ne transforme jamais une extension disparue en bloc entier.
+Les listes en chargement/erreur empêchent l’envoi ; une erreur permet de réessayer.
+
+Le mode avancé « Cartes précises » conserve la saisie de 1 à 100 identifiants,
+sans limite supplémentaire ni combinaison avec un périmètre.
 L'API n'accepte pas de nom de commande, d'URL arbitraire ni d'options Scrapy libres.
-Une limite de 1 à 10 000 candidats par langue est requise pour l'admin ; `limit=0`
-reste disponible uniquement en CLI. Les identifiants explicites sont optionnels.
+Les anciennes demandes API sans `kind` conservent une limite de 1 à 10 000 candidats
+par langue ; `limit=0` reste disponible pour ce parcours uniquement en CLI.
+Dans cette variante historique, les identifiants explicites sont optionnels.
 La limite s’applique aux premiers candidats avant de filtrer ceux déjà présents,
 y compris avec des identifiants explicites. Relancer la même demande ne signifie
 pas « prendre les candidats suivants ». Les bornes et les langues acceptées sont
@@ -90,6 +107,29 @@ alors son erreur et ses dates sont conservées et la suivante peut être exécut
 L’arrêt contrôlé du worker interrompt son enfant et marque la demande active comme
 interrompue, sans consommer la demande suivante. Un second worker sur le même
 répertoire de jobs est refusé sans modifier la collecte du premier.
+
+## Réparation des images
+
+Étant donné des impressions déjà enregistrées dans plusieurs langues, quand je
+clique sur « Réparer les images manquantes » dans Collectes, alors une demande
+globale rejoint la file et apparaît dans l’historique. Son envoi ne peut pas être
+doublé pendant la requête ; une erreur permet de réessayer. Le parcours et le bilan
+sont disponibles en FR/EN/ES.
+
+Étant donné une URL connue et un WebP absent, quand la réparation passe, alors elle
+télécharge cette image sans consulter la fiche source. Sans URL ni fichier local,
+elle consulte la fiche TCGdex de la même langue et conserve l’URL découverte avant
+le téléchargement. Un fichier présent est conservé même ancien, et peut être
+rattaché à l’impression si sa référence manque. Les autres données et dates restent
+identiques.
+
+Une fiche absente ou toujours sans image est signalée comme indisponible. Une erreur
+technique fait échouer la demande, sans empêcher les autres impressions d’être
+traitées. Une réponse portant un autre identifiant est refusée. Les chemins restent
+dans le stockage configuré, y compris avec des liens symboliques. Pour plusieurs
+faces, un échec conserve les fichiers précédents et ne publie pas les autres
+nouveaux fichiers de cette impression. Une nouvelle réparation réessaie les
+images encore manquantes ; les fichiers présents ne sont pas contrôlés pour corruption.
 
 ## Lancement Docker
 

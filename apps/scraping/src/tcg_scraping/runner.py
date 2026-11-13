@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tcg_core.collections.models import CollectionRequest, CollectionResult
+from tcg_core.collections.models import (
+    CollectionRequest,
+    CollectionResult,
+    JobRequest,
+    ScopedCollectionRequest,
+)
 
 
 def collection_result(returncode: int, stats: dict[str, Any]) -> CollectionResult:
@@ -29,28 +34,38 @@ class ScrapyCollector:
         self.jobs_dir = Path(jobs_dir).resolve()
         self.timeout = timeout
 
-    def command(self, identifier: str, request: CollectionRequest) -> list[str]:
+    def command(self, identifier: str, request: JobRequest) -> list[str]:
+        arguments = ["repair_images"]
+        if isinstance(request, (CollectionRequest, ScopedCollectionRequest)):
+            arguments = [
+                request.spider,
+                "-a",
+                f"languages={','.join(request.languages)}",
+                "-a",
+                f"force={str(request.force).lower()}",
+            ]
+            if isinstance(request, ScopedCollectionRequest):
+                arguments += ["-a", f"{request.scope.kind}_id={request.scope.id}"]
+            else:
+                arguments += [
+                    "-a",
+                    f"card_ids={','.join(request.card_ids)}",
+                    "-a",
+                    f"limit={request.limit}",
+                ]
         return [
             sys.executable,
             "-m",
             "scrapy",
             "crawl",
-            request.spider,
-            "-a",
-            f"languages={','.join(request.languages)}",
-            "-a",
-            f"card_ids={','.join(request.card_ids)}",
-            "-a",
-            f"limit={request.limit}",
-            "-a",
-            f"force={str(request.force).lower()}",
+            *arguments,
             "-s",
             "LOG_LEVEL=INFO",
             "-s",
             f"ADMIN_STATS_PATH={self.jobs_dir / identifier / 'stats.json'}",
         ]
 
-    def run(self, identifier: str, request: CollectionRequest) -> CollectionResult:
+    def run(self, identifier: str, request: JobRequest) -> CollectionResult:
         directory = self.jobs_dir / identifier
         directory.mkdir(parents=True, exist_ok=True)
         with (directory / "crawl.log").open("wb") as log:

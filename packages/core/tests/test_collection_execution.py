@@ -4,6 +4,26 @@ from tcg_core.collections.execution import ExecuteCollection
 from tcg_core.collections.models import CollectionResult
 
 
+def test_repair_request_reaches_the_collector_without_becoming_a_collection():
+    class Queue:
+        finished = None
+
+        def claim(self):
+            return {"id": "repair", "parameters": {"kind": "repair_images"}}
+
+        def finish(self, identifier, status, stats, error=None):
+            self.finished = (identifier, status, stats, error)
+
+    class Collector:
+        def run(self, identifier, request):
+            assert request.model_dump() == {"kind": "repair_images"}
+            return CollectionResult(status="succeeded", stats={"images/downloaded": 2})
+
+    queue = Queue()
+    assert ExecuteCollection(queue).execute_next(Collector())
+    assert queue.finished == ("repair", "succeeded", {"images/downloaded": 2}, None)
+
+
 def test_success_is_reported_by_collector_not_inferred_from_diagnostic_keys():
     class Queue:
         record = {"id": "one", "parameters": {}}

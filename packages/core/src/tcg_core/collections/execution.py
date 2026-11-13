@@ -1,6 +1,6 @@
 """Execute the next queued request using a framework-independent collector port."""
 
-from tcg_core.collections.models import CollectionRequest
+from tcg_core.collections.models import job_request_adapter
 from tcg_core.collections.ports import Collector, JobQueue
 
 
@@ -13,7 +13,9 @@ class ExecuteCollection:
         if job is None:
             return False
         try:
-            result = collector.run(job["id"], CollectionRequest(**job["parameters"]))
+            result = collector.run(
+                job["id"], job_request_adapter.validate_python(job["parameters"])
+            )
         except Exception as error:
             self.store.finish(job["id"], "failed", {}, str(error))
         else:

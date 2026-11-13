@@ -74,7 +74,11 @@ l’éventuelle version précédente. Pour une impression à plusieurs images, a
 image de remplacement n’est publiée tant que tous les transferts et conversions
 n’ont pas réussi ; un échec conserve aussi les fichiers précédents.
 Les cartes déjà au contrat courant sont ignorées
-même sans image : utiliser une actualisation explicite pour les réparer. Une carte
+même sans image par la collecte ordinaire. L’action « Réparer les images manquantes »
+traite les impressions existantes : URL connue ou recherche dans la fiche TCGdex
+si elle manque. Elle conserve les fichiers présents, même anciens, et ne modifie
+que les URL et références d’images, sans remplacer l’observation ni sa date. Une
+URL découverte reste enregistrée si le téléchargement échoue. Une carte
 d’une ancienne version peut être recollectée ; la réindexation permet de remettre
 sa projection à jour hors ligne avant de reprendre les collectes.
 
@@ -138,8 +142,10 @@ mais ne remplace pas une vérification du comportement demandé.
 - `tcg_scraping` assemble core/persistence, Scrapy, médias et processus. Il ne
   dépend pas de FastAPI. Le runner traduit les statistiques techniques en résultat
   métier ; le métier conserve les diagnostics sans interpréter leurs clés.
-- Les normalisations de source restent pures. Les requêtes HTTP, empreintes Scrapy
-  et pipelines restent dans scraping ; le nommage des images reste dans core.
+- Les normalisations de source restent pures. Les requêtes HTTP d’acquisition,
+  empreintes Scrapy et pipelines restent dans scraping ; le nommage des images
+  reste dans core. La préparation des choix de collecte utilise un adaptateur
+  HTTP de l’API derrière un port core, sans enregistrer d’observation (ADR 0009).
 - Le frontend compose l’application dans `src/app/`, range types/requêtes/composants
   par fonctionnalité et partage uniquement transport HTTP, formatage et UI générique.
 

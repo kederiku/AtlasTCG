@@ -7,8 +7,23 @@ import sys
 import time
 
 import pytest
-from tcg_core.collections.models import CollectionRequest
+from tcg_core.collections.models import CollectionRequest, ImageRepairRequest
 from tcg_scraping.runner import ScrapyCollector, collection_result
+
+
+def test_image_repair_uses_only_the_dedicated_spider_and_job_diagnostics(tmp_path):
+    command = ScrapyCollector(tmp_path).command("repair", ImageRepairRequest(kind="repair_images"))
+    assert command == [
+        sys.executable,
+        "-m",
+        "scrapy",
+        "crawl",
+        "repair_images",
+        "-s",
+        "LOG_LEVEL=INFO",
+        "-s",
+        f"ADMIN_STATS_PATH={tmp_path / 'repair' / 'stats.json'}",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -91,4 +106,4 @@ def test_scrapy_launcher_discovers_connectors_outside_repository(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.splitlines() == ["tcgdex"]
+    assert result.stdout.splitlines() == ["repair_images", "tcgdex"]

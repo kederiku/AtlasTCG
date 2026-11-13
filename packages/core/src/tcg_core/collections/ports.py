@@ -2,7 +2,7 @@
 
 from typing import Any, Protocol
 
-from tcg_core.collections.models import CollectionRequest, CollectionResult, JobRecord, JobStatus
+from tcg_core.collections.models import CollectionResult, JobRecord, JobRequest, JobStatus
 
 
 class JobSubmitter(Protocol):
@@ -26,4 +26,4 @@ class JobLogReader(Protocol):
 
 
 class Collector(Protocol):
-    def run(self, identifier: str, request: CollectionRequest) -> CollectionResult: ...
+    def run(self, identifier: str, request: JobRequest) -> CollectionResult: ...

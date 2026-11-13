@@ -4,6 +4,7 @@ import hashlib
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from threading import Lock
 
 from PIL import Image, ImageOps
 from scrapy import Request
@@ -27,6 +28,7 @@ class WebPImagesPipeline(FilesPipeline):
     def from_crawler(cls, crawler):
         pipeline = super().from_crawler(crawler)
         pipeline.staging = TemporaryDirectory(prefix=".pending-webp-", dir=pipeline.store.basedir)
+        pipeline.publish_lock = Lock()
         return pipeline
 
     def get_media_requests(self, item, info):
@@ -63,16 +65,18 @@ class WebPImagesPipeline(FilesPipeline):
         return deferToThread(self._publish, [result for _, result in results], item, info)
 
     def _publish(self, results, item, info):
-        for result in results:
-            staged = result.get("webp_staging_path")
-            if staged:
-                self.store.persist_file(
-                    result["path"],
-                    BytesIO(Path(staged).read_bytes()),
-                    info,
-                    meta=None,
-                    headers={"Content-Type": "image/webp"},
-                )
+        # Scrapy's filesystem store caches mkdir calls without thread synchronization.
+        with self.publish_lock:
+            for result in results:
+                staged = result.get("webp_staging_path")
+                if staged:
+                    self.store.persist_file(
+                        result["path"],
+                        BytesIO(Path(staged).read_bytes()),
+                        info,
+                        meta=None,
+                        headers={"Content-Type": "image/webp"},
+                    )
         item["images"] = [
             {key: value for key, value in result.items() if key != "webp_staging_path"}
             for result in results
